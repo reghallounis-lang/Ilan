@@ -1,6 +1,4 @@
 const fs = require("fs");
-const os = require("os");
-const path = require("path");
 const crypto = require("crypto");
 
 function parseMultipart(req) {
@@ -63,11 +61,8 @@ module.exports = async function handler(req, res) {
   if (!boundary) return res.status(400).json({ error: "Content-Type multipart manquant" });
 
   let body;
-  try {
-    body = await parseMultipart(req);
-  } catch (e) {
-    return res.status(400).json({ error: "Erreur lecture body : " + e.message });
-  }
+  try { body = await parseMultipart(req); }
+  catch (e) { return res.status(400).json({ error: "Erreur lecture body : " + e.message }); }
 
   const parts = parseMultipartBody(body, boundary);
   if (!parts.audio || !parts.audio.data) return res.status(400).json({ error: "Fichier audio manquant" });
@@ -81,24 +76,21 @@ module.exports = async function handler(req, res) {
   // 1. Groq Whisper
   let transcript = "";
   try {
-    const boundary2 = "----FormBoundary" + crypto.randomBytes(8).toString("hex");
+    const b2 = "----FormBoundary" + crypto.randomBytes(8).toString("hex");
     const CRLF = "\r\n";
-    const header = Buffer.from(`--${boundary2}${CRLF}Content-Disposition: form-data; name="file"; filename="${fileName}"${CRLF}Content-Type: audio/mpeg${CRLF}${CRLF}`);
-    const modelPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-large-v3-turbo`);
-    const langPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="language"${CRLF}${CRLF}fr`);
-    const fmtPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}text`);
-    const footer = Buffer.from(`${CRLF}--${boundary2}--${CRLF}`);
-    const groqBody = Buffer.concat([header, fileBuffer, modelPart, langPart, fmtPart, footer]);
-
+    const groqBody = Buffer.concat([
+      Buffer.from(`--${b2}${CRLF}Content-Disposition: form-data; name="file"; filename="${fileName}"${CRLF}Content-Type: audio/mpeg${CRLF}${CRLF}`),
+      fileBuffer,
+      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-large-v3-turbo`),
+      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="language"${CRLF}${CRLF}fr`),
+      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}text`),
+      Buffer.from(`${CRLF}--${b2}--${CRLF}`),
+    ]);
     const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${groqKey}`,
-        "Content-Type": `multipart/form-data; boundary=${boundary2}`,
-      },
+      headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": `multipart/form-data; boundary=${b2}` },
       body: groqBody,
     });
-
     const groqText = await groqRes.text();
     if (!groqRes.ok) return res.status(500).json({ error: "Erreur Groq : " + groqText });
     transcript = groqText;
@@ -108,7 +100,7 @@ module.exports = async function handler(req, res) {
 
   if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
 
-  // 2. Claude
+  // 2. Claude — analyse + recherche infos entreprise en ligne
   try {
     const prompt = `Tu es un assistant qui rédige des notes de prospection commerciale professionnelles en français.
 
@@ -116,17 +108,21 @@ Transcription d'un appel commercial — agent: ${agentName}, prospect chez: ${co
 ---
 ${transcript}
 ---
-${leadInfo ? `\nInfos lead:\n${leadInfo}` : ""}
+${leadInfo ? `\nInfos lead connues:\n${leadInfo}` : ""}
 
-Rédige une analyse de cet appel et retourne UNIQUEMENT un JSON valide sans texte autour, sans backticks.
+Fais deux choses :
 
-Règles importantes :
-- Le resume doit être écrit à la première personne du singulier, comme si l'agent rédigeait ses propres notes de terrain : commencer par "J'ai échangé avec Monsieur/Madame [prénom nom], [poste] au sein de [entreprise]..." puis expliquer concrètement de quoi ils ont parlé, ce qui a été dit, les sujets abordés, l'intérêt exprimé, les informations collectées
-- Les points_positifs = ce qui s'est bien passé dans l'échange (points factuels)
-- Les points_amelioration = les prochaines étapes concrètes à réaliser
-- La recommandation = description de l'intérêt et de la réceptivité du prospect
+1. Recherche des informations publiques sur l'entreprise "${companyName}" (secteur d'activité, nombre d'employés, chiffre d'affaires, adresse, SIRET si disponible, site web). Utilise tes connaissances et ce qui est mentionné dans la transcription.
 
-{"transcript_formate":"transcription avec AE: et Prospect: sur chaque ligne","resume":"J'ai échangé avec Monsieur/Madame [prénom nom], [poste] au sein de [entreprise]. [Description détaillée de l'appel : contexte, sujets abordés, informations collectées, intérêt exprimé, suite donnée...]","points_positifs":["point 1","point 2","point 3"],"points_amelioration":["prochaine étape 1","prochaine étape 2"],"objections":["objection 1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"description de l'intérêt et réceptivité du prospect","duree":"durée estimée"}`;
+2. Rédige l'analyse de l'appel.
+
+Règles pour le resume :
+- Écrit à la première personne du singulier comme si l'agent rédigeait ses notes : "J'ai échangé avec Monsieur/Madame [prénom nom], [poste] au sein de [entreprise]..."
+- Expliquer concrètement de quoi ils ont parlé, ce qui a été dit, les sujets abordés, l'intérêt exprimé, les informations collectées, la suite donnée
+
+Retourne UNIQUEMENT un JSON valide sans texte autour, sans backticks :
+
+{"company_info":{"secteur":"secteur d'activité trouvé","employes":"nombre d'employés","chiffre_affaires":"CA estimé ou NC","adresse":"adresse si trouvée ou NC","siret":"SIRET si trouvé ou NC","site":"site web si trouvé ou NC"},"transcript_formate":"avec AE: et Prospect: sur chaque ligne","resume":"J'ai échangé avec [prénom nom], [poste] au sein de [entreprise]. [Description détaillée de l'appel...]","points_positifs":["point 1","point 2","point 3"],"points_amelioration":["prochaine étape 1","prochaine étape 2"],"objections":["objection 1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"intérêt et réceptivité du prospect","duree":"durée estimée"}`;
 
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -137,7 +133,8 @@ Règles importantes :
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
+        max_tokens: 2500,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{ role: "user", content: prompt }],
       }),
     });
