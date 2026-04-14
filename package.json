@@ -2,11 +2,9 @@
   "name": "scalinity-agent",
   "version": "1.0.0",
   "dependencies": {
-    "formidable": "3.5.1",
-    "groq-sdk": "0.3.3",
-    "@anthropic-ai/sdk": "0.24.3"
+    "formidable": "3.5.1"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
   }
 }
