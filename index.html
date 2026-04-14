@@ -13,7 +13,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-l);color:var(--dark);min-height:100vh;}
-.app{display:grid;grid-template-columns:340px 1fr;min-height:100vh;}
+.app{display:grid;grid-template-columns:320px 1fr;min-height:100vh;}
 .sidebar{background:var(--navy);padding:24px 18px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
 .s-logo{display:flex;align-items:center;gap:10px;}
 .s-mark{width:32px;height:32px;border-radius:7px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
@@ -29,6 +29,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .s-hint{font-size:10px;color:rgba(255,255,255,.25);margin-top:3px;}
 .s-hint a{color:var(--green);text-decoration:none;}
 .s-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.s-auto{font-size:10px;color:rgba(0,182,122,.7);margin-top:3px;}
 .uz{border:1.5px dashed rgba(255,255,255,.15);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:rgba(255,255,255,.02);}
 .uz:hover,.uz.drag{border-color:var(--green);background:rgba(0,182,122,.07);}
 .uz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
@@ -81,12 +82,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pt{display:flex;gap:8px;padding:8px 11px;border-radius:7px;border:1px solid var(--line);margin-bottom:5px;font-size:12px;line-height:1.5;background:var(--white);}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
 .dg{background:#059669;}.da{background:var(--amber);}
-.tr-box{background:var(--gray-l);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:11px;font-family:monospace;line-height:1.8;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.info-card{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
+.info-k{font-size:9px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+.info-v{font-size:13px;color:var(--dark);}
 .act{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap;}
 .btn-pdf{padding:10px 20px;border-radius:7px;background:var(--green);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
 .btn-pdf:hover{background:var(--green-d);}
 .btn-r{padding:10px 20px;border-radius:7px;background:var(--white);border:1px solid var(--line);color:var(--dark);font-size:13px;cursor:pointer;}
-@media(max-width:700px){.app{grid-template-columns:1fr;}}
+@media(max-width:700px){.app{grid-template-columns:1fr;}.info-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -112,15 +116,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div>
     <div class="s-sec">2 — Entreprise</div>
-    <div class="s-field"><div class="s-lbl">Nom de l'entreprise</div><input class="s-inp" id="companyName" type="text" placeholder="ex: ADH"></div>
-    <div class="s-field"><div class="s-lbl">Secteur d'activité</div><input class="s-inp" id="sector" type="text" placeholder="ex: Hôpitaux et services de santé"></div>
-    <div class="s-grid">
-      <div class="s-field"><div class="s-lbl">Chiffre d'affaires</div><input class="s-inp" id="revenue" type="text" placeholder="NC"></div>
-      <div class="s-field"><div class="s-lbl">Employés</div><input class="s-inp" id="employees" type="text" placeholder="51-200"></div>
+    <div class="s-field">
+      <div class="s-lbl">Nom de l'entreprise</div>
+      <input class="s-inp" id="companyName" type="text" placeholder="ex: ADH">
+      <div class="s-auto">✦ Secteur, CA, employés récupérés automatiquement</div>
     </div>
-    <div class="s-field"><div class="s-lbl">SIRET</div><input class="s-inp" id="siret" type="text" placeholder="341 860 922 00176"></div>
-    <div class="s-field"><div class="s-lbl">Téléphone standard</div><input class="s-inp" id="phone" type="text" placeholder="03 21 13 89 00"></div>
-    <div class="s-field"><div class="s-lbl">Adresse</div><input class="s-inp" id="address" type="text" placeholder="92 av. du Bord des Eaux, 62110"></div>
+    <div class="s-field"><div class="s-lbl">Téléphone standard</div><input class="s-inp" id="phone" type="text" placeholder="ex: 03 21 13 89 00"></div>
+    <div class="s-field"><div class="s-lbl">Adresse</div><input class="s-inp" id="address" type="text" placeholder="ex: 92 av. du Bord des Eaux, 62110"></div>
   </div>
 
   <div>
@@ -163,7 +165,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <main class="main">
   <div class="main-h">Agent Cold Call</div>
-  <div class="main-s">Upload l'audio · Groq transcrit · Claude analyse · Formulaire de lead généré</div>
+  <div class="main-s">Upload l'audio · Transcription · Analyse · Formulaire de lead PDF</div>
 
   <div class="steps">
     <div class="st active" id="st1"><div class="st-n">1</div><span>Config</span></div>
@@ -184,7 +186,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="proc">
       <div class="proc-t">⚙️ Traitement en cours…</div>
       <div class="ps" id="ps1"><span class="ps-ic">🎙️</span><div style="flex:1"><div class="ps-lbl">Transcription audio</div><div class="ps-sub">Groq Whisper — parole → texte</div></div><span class="ps-st" id="ps1s">EN ATTENTE</span></div>
-      <div class="ps" id="ps2"><span class="ps-ic">🧠</span><div style="flex:1"><div class="ps-lbl">Analyse Claude</div><div class="ps-sub">Résumé, points clés, prochaines étapes</div></div><span class="ps-st" id="ps2s">EN ATTENTE</span></div>
+      <div class="ps" id="ps2"><span class="ps-ic">🔍</span><div style="flex:1"><div class="ps-lbl">Recherche infos entreprise</div><div class="ps-sub">Claude recherche secteur, CA, employés…</div></div><span class="ps-st" id="ps2s">EN ATTENTE</span></div>
       <div class="ps" id="ps3"><span class="ps-ic">📄</span><div style="flex:1"><div class="ps-lbl">Génération formulaire PDF</div><div class="ps-sub">Format Scalinity</div></div><span class="ps-st" id="ps3s">EN ATTENTE</span></div>
     </div>
   </div>
@@ -224,19 +226,47 @@ async function launch(){
   const eb=document.getElementById('errBox');
   eb.style.display='none';
   goP(2);setPS('ps1','run','EN COURS…');
+
   const fd=new FormData();
   fd.append('audio',audioObj);
   fd.append('agentName',gv('agentName'));
   fd.append('companyName',gv('companyName'));
-  fd.append('leadInfo',`Entreprise: ${gv('companyName')}\nSecteur: ${gv('sector')}\nCA: ${gv('revenue')}\nEmployes: ${gv('employees')}\nSIRET: ${gv('siret')}\nTelephone: ${gv('phone')}\nAdresse: ${gv('address')}\nContact: ${gv('firstName')} ${gv('lastName')}, ${gv('jobTitle')}\nEmail: ${gv('email')}\nLigne directe: ${gv('directLine')}\nPortable: ${gv('mobile')}\nClient: ${gv('clientName')}`);
+  fd.append('leadInfo',
+    `Nom entreprise: ${gv('companyName')}\nTelephone: ${gv('phone')}\nAdresse: ${gv('address')}\nContact: ${gv('firstName')} ${gv('lastName')}, ${gv('jobTitle')}\nEmail: ${gv('email')}\nLigne directe: ${gv('directLine')||'NC'}\nPortable: ${gv('mobile')}\nClient: ${gv('clientName')}`
+  );
+
   try{
     const r=await fetch('/api/analyze',{method:'POST',headers:{'x-anthropic-key':ak,'x-groq-key':gk},body:fd});
     const d=await r.json();
     if(!r.ok)throw new Error(d.error||'Erreur serveur');
     setPS('ps1','done','TERMINÉ ✓');setPS('ps2','run','EN COURS…');
-    await sleep(300);setPS('ps2','done','TERMINÉ ✓');setPS('ps3','run','GÉNÉRATION…');
+    await sleep(400);setPS('ps2','done','TERMINÉ ✓');setPS('ps3','run','GÉNÉRATION…');
     await sleep(300);
-    res={...d.analysis,transcript:d.transcript,agentName:gv('agentName'),clientName:gv('clientName'),companyName:gv('companyName'),sector:gv('sector'),revenue:gv('revenue'),employees:gv('employees'),siret:gv('siret'),phone:gv('phone'),address:gv('address'),firstName:gv('firstName'),lastName:gv('lastName'),jobTitle:gv('jobTitle'),email:gv('email'),directLine:gv('directLine')||'NC',mobile:gv('mobile'),date:d.meta.date};
+
+    const ci=d.analysis.company_info||{};
+    res={
+      ...d.analysis,
+      agentName:gv('agentName'),
+      clientName:gv('clientName'),
+      companyName:gv('companyName'),
+      phone:gv('phone'),
+      address:gv('address'),
+      firstName:gv('firstName'),
+      lastName:gv('lastName'),
+      jobTitle:gv('jobTitle'),
+      email:gv('email'),
+      directLine:gv('directLine')||'NC',
+      mobile:gv('mobile'),
+      // infos auto
+      sector: ci.secteur||'NC',
+      employees: ci.employes||'NC',
+      revenue: ci.chiffre_affaires||'NC',
+      siret: ci.siret||'NC',
+      site: ci.site||'NC',
+      address: gv('address')||ci.adresse||'NC',
+      date:d.meta.date,
+    };
+
     setPS('ps3','done','TERMINÉ ✓');
     await sleep(500);render(res);goP(4);
   }catch(e){
@@ -249,38 +279,53 @@ async function launch(){
 function render(r){
   document.getElementById('rmeta').textContent=`${r.companyName||'—'} · ${r.date}`;
   document.getElementById('rcontent').innerHTML=`
-    <div class="sec">Infrastructure actuelle</div><div class="box">${r.resume||''}</div>
-    <div class="sec">Situation actuelle</div>${(r.points_positifs||[]).map(p=>`<div class="pt"><div class="dot dg"></div>${p}</div>`).join('')}
-    <div class="sec">Prochaines étapes</div>${(r.points_amelioration||[]).map(p=>`<div class="pt"><div class="dot da"></div>${p}</div>`).join('')}
-    <div class="sec">Transcription</div><div class="tr-box">${(r.transcript_formate||r.transcript||'').replace(/</g,'&lt;')}</div>`;
+    <div class="sec">Infos entreprise récupérées automatiquement</div>
+    <div class="info-grid">
+      <div class="info-card"><div class="info-k">Secteur</div><div class="info-v">${r.sector||'NC'}</div></div>
+      <div class="info-card"><div class="info-k">Employés</div><div class="info-v">${r.employees||'NC'}</div></div>
+      <div class="info-card"><div class="info-k">Chiffre d'affaires</div><div class="info-v">${r.revenue||'NC'}</div></div>
+      <div class="info-card"><div class="info-k">SIRET</div><div class="info-v">${r.siret||'NC'}</div></div>
+    </div>
+    <div class="sec">Résumé de l'appel</div>
+    <div class="box">${r.resume||''}</div>
+    <div class="sec">Situation actuelle</div>
+    ${(r.points_positifs||[]).map(p=>`<div class="pt"><div class="dot dg"></div>${p}</div>`).join('')}
+    <div class="sec">Prochaines étapes</div>
+    ${(r.points_amelioration||[]).map(p=>`<div class="pt"><div class="dot da"></div>${p}</div>`).join('')}`;
 }
 
 function reset(){
   audioObj=null;res=null;
   document.getElementById('chip').classList.remove('show');
   document.getElementById('af').value='';
-  ['companyName','sector','revenue','employees','siret','phone','address','firstName','lastName','jobTitle','email','directLine','mobile','agentName','clientName'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['companyName','phone','address','firstName','lastName','jobTitle','email','directLine','mobile','agentName','clientName'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['ps1','ps2','ps3'].forEach(id=>{setPS(id,'','EN ATTENTE');document.getElementById(id).className='ps';});
   document.getElementById('errBox').style.display='none';
   document.getElementById('btnGo').disabled=true;
   goP(1);
 }
 
-function v(val){return val&&String(val).trim()?String(val).trim():'NC';}
+function v(val){return val&&String(val).trim()&&String(val).trim()!=='NC'?String(val).trim():'NC';}
 
 function makePDF(){
   const r=res;if(!r)return;
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,PL=14,CW=W-28,H=297;let y=0;
-  const NY=[13,31,60],GR=[0,182,122],WH=[255,255,255];
+  const NY=[13,31,60],GR=[0,182,122];
   const GY=[107,114,128],GYL=[247,248,250],LN=[220,223,228],DK=[17,24,39];
-  const BL=[235,242,251],BLB=[147,197,253];
+  const BL=[235,242,251],BLB=[147,197,253],WH=[255,255,255];
 
   function cy(h){if(y+h>H-16){doc.addPage();y=16;mh();}}
   function mh(){doc.setFillColor(...NY);doc.rect(0,0,W,8,'F');doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...GY);doc.text('scalinity.com — Formulaire du Lead',PL,5.5);doc.text(r.date,W-14,5.5,{align:'right'});}
 
-  function sBar(title){cy(12);doc.setFillColor(...NY);doc.rect(PL,y,CW,9,'F');doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...WH);doc.text(title,W/2,y+6.3,{align:'center'});y+=12;}
+  function sBar(title){
+    cy(12);
+    doc.setFillColor(...NY);doc.rect(PL,y,CW,9,'F');
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...WH);
+    doc.text(title,W/2,y+6.3,{align:'center'});
+    y+=12;
+  }
 
   function row1(label,val){
     cy(11);
@@ -293,25 +338,23 @@ function makePDF(){
   }
 
   function row2(l1,v1,l2,v2){
-    cy(11);
-    const hw=CW/2;
+    cy(11);const hw=CW/2;
     doc.setDrawColor(...LN);doc.setLineWidth(0.3);doc.rect(PL,y,hw,11);doc.rect(PL+hw,y,hw,11);
     doc.setFillColor(...GYL);doc.rect(PL,y,28,11,'F');
     doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(l1+' :',PL+2,y+7.5);
-    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v1).substring(0,22),PL+30,y+7.5);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v1).substring(0,24),PL+30,y+7.5);
     doc.setFillColor(...GYL);doc.rect(PL+hw,y,28,11,'F');
     doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(l2+' :',PL+hw+2,y+7.5);
-    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v2).substring(0,22),PL+hw+30,y+7.5);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v2).substring(0,24),PL+hw+30,y+7.5);
     y+=11;
   }
 
   function dashedBox(text){
     const lines=doc.splitTextToSize(text,CW-8);
-    const bh=lines.length*5.5+10;
-    cy(bh+4);
+    const bh=lines.length*5.5+10;cy(bh+4);
     doc.setDrawColor(...GR);doc.setLineWidth(0.5);doc.setLineDashPattern([2,2],0);
     doc.rect(PL,y,CW,bh);doc.setLineDashPattern([],0);
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...DK);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
     doc.text(lines,PL+4,y+8);y+=bh+6;
   }
 
@@ -325,7 +368,7 @@ function makePDF(){
   sBar('ENTREPRISE');
   row1('Nom',r.companyName);
   row1("Secteur d'activite",r.sector);
-  row2("Chiffre d'affaire",r.revenue,'Nombre d\'employes',r.employees);
+  row2("Chiffre d'affaire",r.revenue,"Nombre d'employes",r.employees);
   row2('SIRET',r.siret,'Numero de Telephone',r.phone);
   row1('Adresse',r.address);
   y+=4;
@@ -355,14 +398,20 @@ function makePDF(){
 
   if((r.points_positifs||[]).length){
     cy(14);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('Situation actuelle',PL,y);y+=6;
-    (r.points_positifs||[]).forEach(pt=>{const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;});
-    y+=4;
+    (r.points_positifs||[]).forEach(pt=>{
+      const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);
+      doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
+      doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;
+    });y+=4;
   }
 
   if((r.points_amelioration||[]).length){
     cy(14);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('Prochaines etapes',PL,y);y+=6;
-    (r.points_amelioration||[]).forEach(pt=>{const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;});
-    y+=4;
+    (r.points_amelioration||[]).forEach(pt=>{
+      const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);
+      doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
+      doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;
+    });y+=4;
   }
 
   if(r.recommandation){
@@ -378,23 +427,7 @@ function makePDF(){
     doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(val),PL+30,y);y+=6;
   });
 
-  // PAGE 3 — TRANSCRIPTION
-  doc.addPage();y=16;mh();
-  doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text("Transcription complete de l'appel",PL,y+5);y+=14;
-  const tlines=(r.transcript_formate||r.transcript||'Non disponible').split('\n').filter(l=>l.trim());
-  tlines.forEach(line=>{
-    const isAE=line.startsWith('AE:')||line.startsWith('Agent:');
-    const isP=line.startsWith('Prospect:')||line.startsWith('P:');
-    const wrapped=doc.splitTextToSize(line,CW-8);const bh=wrapped.length*5+7;cy(bh+3);
-    if(isAE){doc.setFillColor(...BL);doc.setDrawColor(...BLB);}
-    else if(isP){doc.setFillColor(...GYL);doc.setDrawColor(...LN);}
-    else{doc.setFillColor(252,252,252);doc.setDrawColor(...LN);}
-    doc.setLineWidth(0.3);doc.roundedRect(PL,y,CW,bh,2,2,'FD');
-    doc.setFontSize(8.5);doc.setFont('helvetica',isAE||isP?'bold':'normal');
-    doc.setTextColor(isAE?37:isP?60:100,isAE?99:60,isAE?235:60);
-    doc.text(wrapped,PL+4,y+5.5);y+=bh+3;
-  });
-  cy(10);y+=4;
+  cy(10);y+=6;
   doc.setFillColor(...GYL);doc.setDrawColor(...LN);doc.setLineWidth(0.3);doc.roundedRect(PL,y,CW,9,2,2,'FD');
   doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...GY);
   doc.text(`Scalinity Agent IA · ${r.date} · scalinity.com`,W/2,y+6,{align:'center'});
