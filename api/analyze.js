@@ -33,17 +33,32 @@ module.exports = async function handler(req, res) {
   const companyName = String(Array.isArray(fields.companyName) ? fields.companyName[0] : fields.companyName || "Prospect");
   const leadInfo = String(Array.isArray(fields.leadInfo) ? fields.leadInfo[0] : fields.leadInfo || "");
 
+  // 1. Transcription Groq Whisper via fetch direct
   let transcript = "";
   try {
-    const Groq = require("groq-sdk");
-    const groq = new Groq.default({ apiKey: groqKey });
-    const result = await groq.audio.transcriptions.create({
-      file: fs.createReadStream(filePath),
-      model: "whisper-large-v3-turbo",
-      language: "fr",
-      response_format: "text",
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileName = audioFile.originalFilename || audioFile.name || "audio.mp3";
+    const FormData = (await import("node:stream")).default || require("stream");
+
+    // Use native FormData with Blob
+    const { FormData: FD } = await import("formdata-node");
+    const fd = new FD();
+    fd.append("file", new Blob([fileBuffer]), fileName);
+    fd.append("model", "whisper-large-v3-turbo");
+    fd.append("language", "fr");
+    fd.append("response_format", "text");
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${groqKey}` },
+      body: fd,
     });
-    transcript = typeof result === "string" ? result : (result.text || "");
+
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      throw new Error(err);
+    }
+    transcript = await groqRes.text();
   } catch (e) {
     try { fs.unlinkSync(filePath); } catch (_) {}
     return res.status(500).json({ error: "Erreur Groq : " + e.message });
@@ -51,17 +66,28 @@ module.exports = async function handler(req, res) {
   try { fs.unlinkSync(filePath); } catch (_) {}
   if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
 
+  // 2. Analyse Claude via fetch direct
   try {
-    const Anthropic = require("@anthropic-ai/sdk");
-    const client = new Anthropic.default({ apiKey: anthropicKey });
-    const prompt = `Tu es un coach expert en cold call B2B pour Scalinity.\n\nTranscription — agent: ${agentName}, prospect: ${companyName}:\n---\n${transcript}\n---\n${leadInfo ? `\nInfos lead:\n${leadInfo}` : ""}\n\nRetourne UNIQUEMENT un JSON valide sans texte autour, sans backticks.\n\n{"transcript_formate":"transcription reformatée avec AE: et Prospect:","resume":"résumé 3-4 phrases","points_positifs":["p1","p2","p3"],"points_amelioration":["p1","p2"],"objections":["o1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"conseil actionnable","duree":"durée estimée"}`;
+    const prompt = `Tu es un coach expert en cold call B2B pour Scalinity.\n\nTranscription — agent: ${agentName}, prospect: ${companyName}:\n---\n${transcript}\n---\n${leadInfo ? `\nInfos lead:\n${leadInfo}` : ""}\n\nRetourne UNIQUEMENT un JSON valide sans texte autour, sans backticks.\n\n{"transcript_formate":"avec AE: et Prospect:","resume":"3-4 phrases","points_positifs":["p1","p2","p3"],"points_amelioration":["p1","p2"],"objections":["o1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"conseil","duree":"durée"}`;
 
-    const msg = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
+    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
-    const raw = msg.content.map(c => c.text || "").join("").trim();
+
+    const claudeData = await claudeRes.json();
+    if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Erreur Claude");
+
+    const raw = claudeData.content.map(c => c.text || "").join("").trim();
     const match = raw.match(/\{[\s\S]*\}/);
     const analysis = JSON.parse(match ? match[0] : raw);
 
