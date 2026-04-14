@@ -1,5 +1,52 @@
-const { formidable } = require("formidable");
 const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const crypto = require("crypto");
+
+function parseMultipart(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", chunk => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
+function extractBoundary(contentType) {
+  const match = contentType.match(/boundary=([^\s;]+)/);
+  return match ? match[1] : null;
+}
+
+function parseMultipartBody(body, boundary) {
+  const parts = {};
+  const sep = Buffer.from(`--${boundary}`);
+  let start = 0;
+  const segments = [];
+
+  for (let i = 0; i <= body.length - sep.length; i++) {
+    if (body.slice(i, i + sep.length).equals(sep)) {
+      if (start > 0) segments.push(body.slice(start, i - 2));
+      start = i + sep.length + 2;
+    }
+  }
+
+  for (const seg of segments) {
+    const headerEnd = seg.indexOf("\r\n\r\n");
+    if (headerEnd === -1) continue;
+    const headerStr = seg.slice(0, headerEnd).toString();
+    const content = seg.slice(headerEnd + 4);
+    const nameMatch = headerStr.match(/name="([^"]+)"/);
+    const fileMatch = headerStr.match(/filename="([^"]+)"/);
+    if (!nameMatch) continue;
+    const name = nameMatch[1];
+    if (fileMatch) {
+      parts[name] = { filename: fileMatch[1], data: content };
+    } else {
+      parts[name] = content.toString().trim();
+    }
+  }
+  return parts;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,22 +60,85 @@ module.exports = async function handler(req, res) {
   if (!anthropicKey.startsWith("sk-ant")) return res.status(400).json({ error: "Clé Anthropic invalide" });
   if (!groqKey.startsWith("gsk_")) return res.status(400).json({ error: "Clé Groq invalide" });
 
-  const form = formidable({ maxFileSize: 25 * 1024 * 1024, keepExtensions: true, uploadDir: "/tmp" });
-  let fields, files;
+  const contentType = req.headers["content-type"] || "";
+  const boundary = extractBoundary(contentType);
+  if (!boundary) return res.status(400).json({ error: "Content-Type multipart manquant" });
+
+  let body;
   try {
-    [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, f, fi) => { if (err) reject(err); else resolve([f, fi]); });
-    });
+    body = await parseMultipart(req);
   } catch (e) {
-    return res.status(400).json({ error: "Erreur parsing : " + e.message });
+    return res.status(400).json({ error: "Erreur lecture body : " + e.message });
   }
 
-  const audioArr = files.audio;
-  const audioFile = Array.isArray(audioArr) ? audioArr[0] : audioArr;
-  if (!audioFile) return res.status(400).json({ error: "Aucun fichier audio reçu." });
-  const filePath = audioFile.filepath || audioFile.path;
-  if (!filePath || !fs.existsSync(filePath)) return res.status(400).json({ error: "Fichier audio introuvable." });
+  const parts = parseMultipartBody(body, boundary);
 
-  const agentName = String(Array.isArray(fields.agentName) ? fields.agentName[0] : fields.agentName || "Agent");
-  const companyName = String(Array.isArray(fields.companyName) ? fields.companyName[0] : fields.companyName || "Prospect");
-  const leadInfo
+  if (!parts.audio || !parts.audio.data) return res.status(400).json({ error: "Fichier audio manquant" });
+
+  const agentName = parts.agentName || "Agent";
+  const companyName = parts.companyName || "Prospect";
+  const leadInfo = parts.leadInfo || "";
+  const fileBuffer = parts.audio.data;
+  const fileName = parts.audio.filename || "audio.mp3";
+
+  // Groq Whisper
+  let transcript = "";
+  try {
+    const boundary2 = "----FormBoundary" + crypto.randomBytes(8).toString("hex");
+    const CRLF = "\r\n";
+    const header = Buffer.from(`--${boundary2}${CRLF}Content-Disposition: form-data; name="file"; filename="${fileName}"${CRLF}Content-Type: audio/mpeg${CRLF}${CRLF}`);
+    const modelPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-large-v3-turbo`);
+    const langPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="language"${CRLF}${CRLF}fr`);
+    const fmtPart = Buffer.from(`${CRLF}--${boundary2}${CRLF}Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}text`);
+    const footer = Buffer.from(`${CRLF}--${boundary2}--${CRLF}`);
+    const groqBody = Buffer.concat([header, fileBuffer, modelPart, langPart, fmtPart, footer]);
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": `multipart/form-data; boundary=${boundary2}`,
+      },
+      body: groqBody,
+    });
+
+    const groqText = await groqRes.text();
+    if (!groqRes.ok) return res.status(500).json({ error: "Erreur Groq : " + groqText });
+    transcript = groqText;
+  } catch (e) {
+    return res.status(500).json({ error: "Erreur Groq : " + e.message });
+  }
+
+  if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
+
+  // Claude
+  try {
+    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: `Tu es un coach cold call B2B Scalinity. Transcription agent ${agentName} prospect ${companyName}:\n${transcript}\n${leadInfo ? `Infos lead: ${leadInfo}` : ""}\n\nRetourne UNIQUEMENT un JSON valide sans texte autour:\n{"transcript_formate":"avec AE: et Prospect:","resume":"3-4 phrases","points_positifs":["p1","p2","p3"],"points_amelioration":["p1","p2"],"objections":["o1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"conseil","duree":"durée"}` }],
+      }),
+    });
+
+    const claudeData = await claudeRes.json();
+    if (!claudeRes.ok) return res.status(500).json({ error: "Erreur Claude : " + JSON.stringify(claudeData.error) });
+
+    const raw = claudeData.content.map(c => c.text || "").join("").trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    const analysis = JSON.parse(match ? match[0] : raw);
+
+    return res.status(200).json({
+      transcript, analysis,
+      meta: { agentName, companyName, date: new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) },
+    });
+  } catch (e) {
+    return res.status(500).json({ error: "Erreur Claude : " + e.message });
+  }
+};
