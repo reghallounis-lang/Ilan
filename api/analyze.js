@@ -22,14 +22,12 @@ function parseMultipartBody(body, boundary) {
   const sep = Buffer.from(`--${boundary}`);
   let start = 0;
   const segments = [];
-
   for (let i = 0; i <= body.length - sep.length; i++) {
     if (body.slice(i, i + sep.length).equals(sep)) {
       if (start > 0) segments.push(body.slice(start, i - 2));
       start = i + sep.length + 2;
     }
   }
-
   for (const seg of segments) {
     const headerEnd = seg.indexOf("\r\n\r\n");
     if (headerEnd === -1) continue;
@@ -72,7 +70,6 @@ module.exports = async function handler(req, res) {
   }
 
   const parts = parseMultipartBody(body, boundary);
-
   if (!parts.audio || !parts.audio.data) return res.status(400).json({ error: "Fichier audio manquant" });
 
   const agentName = parts.agentName || "Agent";
@@ -81,7 +78,7 @@ module.exports = async function handler(req, res) {
   const fileBuffer = parts.audio.data;
   const fileName = parts.audio.filename || "audio.mp3";
 
-  // Groq Whisper
+  // 1. Groq Whisper
   let transcript = "";
   try {
     const boundary2 = "----FormBoundary" + crypto.randomBytes(8).toString("hex");
@@ -111,8 +108,26 @@ module.exports = async function handler(req, res) {
 
   if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
 
-  // Claude
+  // 2. Claude
   try {
+    const prompt = `Tu es un assistant qui rédige des notes de prospection commerciale professionnelles en français.
+
+Transcription d'un appel commercial — agent: ${agentName}, prospect chez: ${companyName}:
+---
+${transcript}
+---
+${leadInfo ? `\nInfos lead:\n${leadInfo}` : ""}
+
+Rédige une analyse de cet appel et retourne UNIQUEMENT un JSON valide sans texte autour, sans backticks.
+
+Règles importantes :
+- Le resume doit être écrit à la première personne du singulier, comme si l'agent rédigeait ses propres notes de terrain : commencer par "J'ai échangé avec Monsieur/Madame [prénom nom], [poste] au sein de [entreprise]..." puis expliquer concrètement de quoi ils ont parlé, ce qui a été dit, les sujets abordés, l'intérêt exprimé, les informations collectées
+- Les points_positifs = ce qui s'est bien passé dans l'échange (points factuels)
+- Les points_amelioration = les prochaines étapes concrètes à réaliser
+- La recommandation = description de l'intérêt et de la réceptivité du prospect
+
+{"transcript_formate":"transcription avec AE: et Prospect: sur chaque ligne","resume":"J'ai échangé avec Monsieur/Madame [prénom nom], [poste] au sein de [entreprise]. [Description détaillée de l'appel : contexte, sujets abordés, informations collectées, intérêt exprimé, suite donnée...]","points_positifs":["point 1","point 2","point 3"],"points_amelioration":["prochaine étape 1","prochaine étape 2"],"objections":["objection 1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"description de l'intérêt et réceptivité du prospect","duree":"durée estimée"}`;
+
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -123,7 +138,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
-        messages: [{ role: "user", content: `Tu es un coach cold call B2B Scalinity. Transcription agent ${agentName} prospect ${companyName}:\n${transcript}\n${leadInfo ? `Infos lead: ${leadInfo}` : ""}\n\nRetourne UNIQUEMENT un JSON valide sans texte autour:\n{"transcript_formate":"avec AE: et Prospect:","resume":"3-4 phrases","points_positifs":["p1","p2","p3"],"points_amelioration":["p1","p2"],"objections":["o1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookée | rappel à planifier | pas intéressé | message vocal","recommandation":"conseil","duree":"durée"}` }],
+        messages: [{ role: "user", content: prompt }],
       }),
     });
 
