@@ -69,7 +69,6 @@ module.exports = async function handler(req, res) {
 
   const agentName = parts.agentName || "Agent";
   const companyName = parts.companyName || "Prospect";
-  const leadInfo = parts.leadInfo || "";
   const fileBuffer = parts.audio.data;
   const fileName = parts.audio.filename || "audio.mp3";
 
@@ -100,40 +99,31 @@ module.exports = async function handler(req, res) {
 
   if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
 
-  // 2. Claude — deux appels séparés pour éviter les problèmes JSON
-
-  // 2a. Recherche infos entreprise
-  let companyInfo = { secteur: "NC", employes: "NC", chiffre_affaires: "NC", siret: "NC", site: "NC", adresse: "NC" };
+  // 2. Analyse coach Claude
   try {
-    const infoRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 500,
-        messages: [{ role: "user", content: `Donne-moi les informations publiques sur l'entreprise "${companyName}" en France. Retourne UNIQUEMENT ce JSON sans texte autour: {"secteur":"secteur activite","employes":"nb employes","chiffre_affaires":"CA ou NC","siret":"SIRET ou NC","site":"site web ou NC","adresse":"adresse ou NC"}` }],
-      }),
-    });
-    const infoData = await infoRes.json();
-    if (infoRes.ok) {
-      const raw = infoData.content.map(c => c.text || "").join("").trim();
-      const match = raw.match(/\{[\s\S]*?\}/);
-      if (match) companyInfo = JSON.parse(match[0]);
-    }
-  } catch (e) { /* garde les valeurs NC par défaut */ }
+    const prompt = `Tu es un coach expert en cold call B2B. Analyse cet appel passé par ${agentName} auprès de ${companyName} et donne un retour détaillé pour aider l'agent à progresser.
 
-  // 2b. Analyse de l'appel
-  try {
-    const prompt = `Tu es un assistant qui rédige des notes de prospection commerciale en français.
-
-Transcription d'un appel — agent: ${agentName}, prospect chez: ${companyName}:
+Transcription:
 ---
 ${transcript}
 ---
-${leadInfo ? `Infos connues:\n${leadInfo}` : ""}
 
-Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks, sans commentaires:
-{"resume":"J ai echange avec [prenom nom], [poste] au sein de [entreprise]. [Description detaillee de l appel, sujets abordes, informations collectees, interet exprime, suite donnee]","points_positifs":["point 1","point 2","point 3"],"points_amelioration":["etape 1","etape 2"],"objections":["objection 1"],"score_global":72,"score_accroche":65,"score_qualification":80,"score_conversion":55,"resultat":"visio bookee ou rappel a planifier ou pas interesse ou message vocal","recommandation":"interet et receptivite du prospect","duree":"duree estimee"}`;
+Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks:
+{
+  "resume": "résumé factuel de l'appel en 2-3 phrases: qui a appelé qui, quel était l'objet, quel a été le résultat",
+  "score_global": 72,
+  "score_accroche": 65,
+  "score_qualification": 80,
+  "score_ecoute": 70,
+  "score_closing": 55,
+  "points_forts": ["ce que l agent a bien fait 1", "point fort 2", "point fort 3"],
+  "axes_amelioration": ["axe concret 1", "axe concret 2", "axe concret 3"],
+  "tips": ["conseil actionnable specifique 1", "conseil actionnable 2", "conseil actionnable 3"],
+  "moment_cle": "le moment le plus important ou decisif de l appel et pourquoi",
+  "resultat": "visio bookee | rappel a planifier | pas interesse | message vocal",
+  "note_coach": "feedback global du coach a l agent en 2-3 phrases, bienveillant et motivant",
+  "duree": "duree estimee de l appel"
+}`;
 
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -154,8 +144,12 @@ Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks, sans comme
 
     return res.status(200).json({
       transcript,
-      analysis: { ...analysis, company_info: companyInfo },
-      meta: { agentName, companyName, date: new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) },
+      analysis,
+      meta: {
+        agentName,
+        companyName,
+        date: new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }),
+      },
     });
   } catch (e) {
     return res.status(500).json({ error: "Erreur Claude : " + e.message });
