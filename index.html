@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scalinity — Agent Cold Call IA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0D1F3C;--green:#00B67A;--green-l:#E6F9F3;--green-d:#00996A;
+  --blue-l:#EBF2FB;--gray:#6B7280;--gray-l:#F7F8FA;--line:#E5E7EB;
+  --dark:#111827;--amber:#D97706;--red:#DC2626;--red-l:#FEF2F2;--white:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-l);color:var(--dark);min-height:100vh;}
+.app{display:grid;grid-template-columns:340px 1fr;min-height:100vh;}
+.sidebar{background:var(--navy);padding:24px 18px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
+.s-logo{display:flex;align-items:center;gap:10px;}
+.s-mark{width:32px;height:32px;border-radius:7px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
+.s-name{font-size:15px;font-weight:700;color:#fff;}
+.s-badge{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.06em;display:block;}
+.sdiv{height:1px;background:rgba(255,255,255,.08);}
+.s-sec{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+.s-field{margin-bottom:8px;}
+.s-lbl{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:3px;}
+.s-inp{width:100%;padding:7px 9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;font-size:12px;outline:none;transition:border .2s;}
+.s-inp::placeholder{color:rgba(255,255,255,.18);}
+.s-inp:focus{border-color:var(--green);}
+.s-hint{font-size:10px;color:rgba(255,255,255,.25);margin-top:3px;}
+.s-hint a{color:var(--green);text-decoration:none;}
+.s-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.uz{border:1.5px dashed rgba(255,255,255,.15);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:rgba(255,255,255,.02);}
+.uz:hover,.uz.drag{border-color:var(--green);background:rgba(0,182,122,.07);}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.uz-icon{font-size:18px;margin-bottom:3px;}
+.uz-t{font-size:12px;color:rgba(255,255,255,.6);font-weight:500;}
+.uz-h{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;}
+.chip{display:none;margin-top:6px;background:rgba(0,182,122,.12);border:1px solid rgba(0,182,122,.25);border-radius:5px;padding:5px 8px;align-items:center;gap:6px;}
+.chip.show{display:flex;}
+.chip-n{font-size:11px;color:var(--green);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chip-x{color:rgba(255,255,255,.3);cursor:pointer;font-size:13px;}
+.chip-x:hover{color:var(--red);}
+.btn-go{width:100%;padding:11px;border-radius:8px;background:var(--green);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-go:hover{background:var(--green-d);}
+.btn-go:disabled{opacity:.3;cursor:not-allowed;}
+.err{background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:6px;padding:8px 11px;font-size:12px;color:#FCA5A5;display:none;line-height:1.5;}
+.main{padding:28px;overflow-y:auto;}
+.main-h{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.main-s{font-size:13px;color:var(--gray);margin-bottom:22px;}
+.steps{display:flex;margin-bottom:24px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--white);}
+.st{flex:1;display:flex;align-items:center;gap:7px;padding:9px 13px;font-size:12px;color:var(--gray);border-right:1px solid var(--line);opacity:.45;transition:all .3s;}
+.st:last-child{border-right:none;}
+.st.active{opacity:1;background:var(--blue-l);color:var(--navy);}
+.st.done{opacity:1;background:var(--green-l);color:var(--green-d);}
+.st-n{width:20px;height:20px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
+.st.active .st-n{background:#3B82F6;color:#fff;}
+.st.done .st-n{background:var(--green);color:#fff;}
+.panel{display:none;}.panel.show{display:block;}
+.empty{text-align:center;padding:70px 30px;}
+.empty-ic{font-size:48px;opacity:.35;margin-bottom:14px;}
+.empty-t{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:7px;}
+.empty-s{font-size:13px;color:var(--gray);line-height:1.6;}
+.proc{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:22px;max-width:480px;margin:0 auto;}
+.proc-t{font-size:14px;font-weight:600;color:var(--navy);text-align:center;margin-bottom:18px;}
+.ps{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:7px;border:1px solid var(--line);margin-bottom:7px;transition:all .3s;}
+.ps.run{border-color:#93C5FD;background:var(--blue-l);}
+.ps.done{border-color:var(--green);background:var(--green-l);}
+.ps.err{border-color:#FECACA;background:var(--red-l);}
+.ps-ic{font-size:17px;flex-shrink:0;}
+.ps-lbl{font-size:12px;font-weight:500;flex:1;}
+.ps-sub{font-size:10px;color:var(--gray);}
+.ps-st{font-size:10px;font-weight:600;color:var(--gray);}
+.ps.run .ps-st{color:#2563EB;}.ps.done .ps-st{color:var(--green-d);}.ps.err .ps-st{color:var(--red);}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.ps.run .ps-ic{animation:bl 1.2s ease infinite;}
+.r-head{margin-bottom:18px;}
+.r-title{font-size:17px;font-weight:700;color:var(--navy);}
+.r-meta{font-size:12px;color:var(--gray);margin-top:2px;}
+.sec{font-size:9px;font-weight:700;color:var(--gray);letter-spacing:.07em;text-transform:uppercase;margin:15px 0 7px;}
+.box{background:var(--gray-l);border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:13px;color:var(--dark);line-height:1.7;}
+.pt{display:flex;gap:8px;padding:8px 11px;border-radius:7px;border:1px solid var(--line);margin-bottom:5px;font-size:12px;line-height:1.5;background:var(--white);}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.dg{background:#059669;}.da{background:var(--amber);}
+.tr-box{background:var(--gray-l);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:11px;font-family:monospace;line-height:1.8;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
+.act{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap;}
+.btn-pdf{padding:10px 20px;border-radius:7px;background:var(--green);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-pdf:hover{background:var(--green-d);}
+.btn-r{padding:10px 20px;border-radius:7px;background:var(--white);border:1px solid var(--line);color:var(--dark);font-size:13px;cursor:pointer;}
+@media(max-width:700px){.app{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="s-logo">
+    <div class="s-mark">S</div>
+    <div><div class="s-name">Scalinity</div><span class="s-badge">AGENT COLD CALL IA</span></div>
+  </div>
+  <div class="sdiv"></div>
+
+  <div>
+    <div class="s-sec">1 — Enregistrement</div>
+    <div class="uz" id="uz">
+      <input type="file" id="af" accept=".mp3,.wav,.m4a,.ogg,.webm,audio/*">
+      <div class="uz-icon">🎙️</div>
+      <div class="uz-t">Déposer le fichier audio</div>
+      <div class="uz-h">MP3 · WAV · M4A · max 25 MB</div>
+    </div>
+    <div class="chip" id="chip"><span class="chip-n" id="cname">—</span><span class="chip-x" id="cx">✕</span></div>
+  </div>
+
+  <div>
+    <div class="s-sec">2 — Entreprise</div>
+    <div class="s-field"><div class="s-lbl">Nom de l'entreprise</div><input class="s-inp" id="companyName" type="text" placeholder="ex: ADH"></div>
+    <div class="s-field"><div class="s-lbl">Secteur d'activité</div><input class="s-inp" id="sector" type="text" placeholder="ex: Hôpitaux et services de santé"></div>
+    <div class="s-grid">
+      <div class="s-field"><div class="s-lbl">Chiffre d'affaires</div><input class="s-inp" id="revenue" type="text" placeholder="NC"></div>
+      <div class="s-field"><div class="s-lbl">Employés</div><input class="s-inp" id="employees" type="text" placeholder="51-200"></div>
+    </div>
+    <div class="s-field"><div class="s-lbl">SIRET</div><input class="s-inp" id="siret" type="text" placeholder="341 860 922 00176"></div>
+    <div class="s-field"><div class="s-lbl">Téléphone standard</div><input class="s-inp" id="phone" type="text" placeholder="03 21 13 89 00"></div>
+    <div class="s-field"><div class="s-lbl">Adresse</div><input class="s-inp" id="address" type="text" placeholder="92 av. du Bord des Eaux, 62110"></div>
+  </div>
+
+  <div>
+    <div class="s-sec">3 — Prospect</div>
+    <div class="s-grid">
+      <div class="s-field"><div class="s-lbl">Prénom</div><input class="s-inp" id="firstName" type="text" placeholder="Gaetan"></div>
+      <div class="s-field"><div class="s-lbl">Nom</div><input class="s-inp" id="lastName" type="text" placeholder="Bajart"></div>
+    </div>
+    <div class="s-field"><div class="s-lbl">Poste</div><input class="s-inp" id="jobTitle" type="text" placeholder="IT Manager"></div>
+    <div class="s-field"><div class="s-lbl">Email</div><input class="s-inp" id="email" type="text" placeholder="g.bajart@ad2h.fr"></div>
+    <div class="s-grid">
+      <div class="s-field"><div class="s-lbl">Ligne directe</div><input class="s-inp" id="directLine" type="text" placeholder="NC"></div>
+      <div class="s-field"><div class="s-lbl">Portable</div><input class="s-inp" id="mobile" type="text" placeholder="06 45 15 77 69"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="s-sec">4 — Appel</div>
+    <div class="s-field"><div class="s-lbl">Nom de l'agent</div><input class="s-inp" id="agentName" type="text" placeholder="Sophie Martin"></div>
+    <div class="s-field"><div class="s-lbl">Client (de la part de)</div><input class="s-inp" id="clientName" type="text" placeholder="ex: Axelor"></div>
+  </div>
+
+  <div>
+    <div class="s-sec">5 — Clés API</div>
+    <div class="s-field">
+      <div class="s-lbl">Clé Anthropic</div>
+      <input class="s-inp" id="akey" type="password" placeholder="sk-ant-...">
+      <div class="s-hint"><a href="https://console.anthropic.com" target="_blank">console.anthropic.com →</a></div>
+    </div>
+    <div class="s-field">
+      <div class="s-lbl">Clé Groq (gratuit)</div>
+      <input class="s-inp" id="gkey" type="password" placeholder="gsk_...">
+      <div class="s-hint"><a href="https://console.groq.com" target="_blank">console.groq.com →</a></div>
+    </div>
+  </div>
+
+  <div id="errBox" class="err"></div>
+  <button class="btn-go" id="btnGo" disabled onclick="launch()">⚡ Analyser l'appel</button>
+</aside>
+
+<main class="main">
+  <div class="main-h">Agent Cold Call</div>
+  <div class="main-s">Upload l'audio · Groq transcrit · Claude analyse · Formulaire de lead généré</div>
+
+  <div class="steps">
+    <div class="st active" id="st1"><div class="st-n">1</div><span>Config</span></div>
+    <div class="st" id="st2"><div class="st-n">2</div><span>Transcription</span></div>
+    <div class="st" id="st3"><div class="st-n">3</div><span>Analyse</span></div>
+    <div class="st" id="st4"><div class="st-n">4</div><span>Formulaire</span></div>
+  </div>
+
+  <div class="panel show" id="p1">
+    <div class="empty">
+      <div class="empty-ic">🎙️</div>
+      <div class="empty-t">Prêt à analyser</div>
+      <div class="empty-s">Remplis le formulaire à gauche,<br>uploade l'enregistrement et lance l'analyse.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="p2">
+    <div class="proc">
+      <div class="proc-t">⚙️ Traitement en cours…</div>
+      <div class="ps" id="ps1"><span class="ps-ic">🎙️</span><div style="flex:1"><div class="ps-lbl">Transcription audio</div><div class="ps-sub">Groq Whisper — parole → texte</div></div><span class="ps-st" id="ps1s">EN ATTENTE</span></div>
+      <div class="ps" id="ps2"><span class="ps-ic">🧠</span><div style="flex:1"><div class="ps-lbl">Analyse Claude</div><div class="ps-sub">Résumé, points clés, prochaines étapes</div></div><span class="ps-st" id="ps2s">EN ATTENTE</span></div>
+      <div class="ps" id="ps3"><span class="ps-ic">📄</span><div style="flex:1"><div class="ps-lbl">Génération formulaire PDF</div><div class="ps-sub">Format Scalinity</div></div><span class="ps-st" id="ps3s">EN ATTENTE</span></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p3">
+    <div class="r-head">
+      <div class="r-title">Formulaire du lead prêt</div>
+      <div class="r-meta" id="rmeta">—</div>
+    </div>
+    <div id="rcontent"></div>
+    <div class="act">
+      <button class="btn-pdf" onclick="makePDF()">⬇ Télécharger Formulaire PDF</button>
+      <button class="btn-r" onclick="reset()">↩ Nouvel appel</button>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+let audioObj=null,res=null;
+const uz=document.getElementById('uz'),af=document.getElementById('af'),chip=document.getElementById('chip'),cname=document.getElementById('cname');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag');});
+uz.addEventListener('dragleave',()=>uz.classList.remove('drag'));
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag');if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
+af.addEventListener('change',e=>{if(e.target.files[0])setFile(e.target.files[0]);});
+document.getElementById('cx').addEventListener('click',e=>{e.stopPropagation();audioObj=null;chip.classList.remove('show');af.value='';chk();});
+function setFile(f){audioObj=f;cname.textContent=f.name;chip.classList.add('show');chk();}
+['akey','gkey'].forEach(id=>document.getElementById(id).addEventListener('input',chk));
+function chk(){const ok=audioObj&&document.getElementById('akey').value.trim().startsWith('sk-ant')&&document.getElementById('gkey').value.trim().startsWith('gsk_');document.getElementById('btnGo').disabled=!ok;}
+function goP(n){for(let i=1;i<=4;i++){const s=document.getElementById('st'+i);s.classList.remove('active','done');if(i<n)s.classList.add('done');else if(i===n)s.classList.add('active');}['p1','p2','p3'].forEach((id,i)=>{const el=document.getElementById(id);el.classList.remove('show');if(i+1===Math.min(n,3))el.classList.add('show');});}
+function setPS(id,st,txt){const el=document.getElementById(id),s=document.getElementById(id+'s');el.className='ps'+(st==='run'?' run':st==='done'?' done':st==='err'?' err':'');s.textContent=txt;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function gv(id){return document.getElementById(id)?.value.trim()||'';}
+
+async function launch(){
+  const ak=gv('akey'),gk=gv('gkey');
+  const eb=document.getElementById('errBox');
+  eb.style.display='none';
+  goP(2);setPS('ps1','run','EN COURS…');
+  const fd=new FormData();
+  fd.append('audio',audioObj);
+  fd.append('agentName',gv('agentName'));
+  fd.append('companyName',gv('companyName'));
+  fd.append('leadInfo',`Entreprise: ${gv('companyName')}\nSecteur: ${gv('sector')}\nCA: ${gv('revenue')}\nEmployes: ${gv('employees')}\nSIRET: ${gv('siret')}\nTelephone: ${gv('phone')}\nAdresse: ${gv('address')}\nContact: ${gv('firstName')} ${gv('lastName')}, ${gv('jobTitle')}\nEmail: ${gv('email')}\nLigne directe: ${gv('directLine')}\nPortable: ${gv('mobile')}\nClient: ${gv('clientName')}`);
+  try{
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'x-anthropic-key':ak,'x-groq-key':gk},body:fd});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Erreur serveur');
+    setPS('ps1','done','TERMINÉ ✓');setPS('ps2','run','EN COURS…');
+    await sleep(300);setPS('ps2','done','TERMINÉ ✓');setPS('ps3','run','GÉNÉRATION…');
+    await sleep(300);
+    res={...d.analysis,transcript:d.transcript,agentName:gv('agentName'),clientName:gv('clientName'),companyName:gv('companyName'),sector:gv('sector'),revenue:gv('revenue'),employees:gv('employees'),siret:gv('siret'),phone:gv('phone'),address:gv('address'),firstName:gv('firstName'),lastName:gv('lastName'),jobTitle:gv('jobTitle'),email:gv('email'),directLine:gv('directLine')||'NC',mobile:gv('mobile'),date:d.meta.date};
+    setPS('ps3','done','TERMINÉ ✓');
+    await sleep(500);render(res);goP(4);
+  }catch(e){
+    setPS('ps1','err','ERREUR');setPS('ps2','err','—');setPS('ps3','err','—');
+    eb.textContent='⚠ '+e.message;eb.style.display='block';
+    await sleep(1500);goP(1);
+  }
+}
+
+function render(r){
+  document.getElementById('rmeta').textContent=`${r.companyName||'—'} · ${r.date}`;
+  document.getElementById('rcontent').innerHTML=`
+    <div class="sec">Infrastructure actuelle</div><div class="box">${r.resume||''}</div>
+    <div class="sec">Situation actuelle</div>${(r.points_positifs||[]).map(p=>`<div class="pt"><div class="dot dg"></div>${p}</div>`).join('')}
+    <div class="sec">Prochaines étapes</div>${(r.points_amelioration||[]).map(p=>`<div class="pt"><div class="dot da"></div>${p}</div>`).join('')}
+    <div class="sec">Transcription</div><div class="tr-box">${(r.transcript_formate||r.transcript||'').replace(/</g,'&lt;')}</div>`;
+}
+
+function reset(){
+  audioObj=null;res=null;
+  document.getElementById('chip').classList.remove('show');
+  document.getElementById('af').value='';
+  ['companyName','sector','revenue','employees','siret','phone','address','firstName','lastName','jobTitle','email','directLine','mobile','agentName','clientName'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ps1','ps2','ps3'].forEach(id=>{setPS(id,'','EN ATTENTE');document.getElementById(id).className='ps';});
+  document.getElementById('errBox').style.display='none';
+  document.getElementById('btnGo').disabled=true;
+  goP(1);
+}
+
+function v(val){return val&&String(val).trim()?String(val).trim():'NC';}
+
+function makePDF(){
+  const r=res;if(!r)return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,PL=14,CW=W-28,H=297;let y=0;
+  const NY=[13,31,60],GR=[0,182,122],WH=[255,255,255];
+  const GY=[107,114,128],GYL=[247,248,250],LN=[220,223,228],DK=[17,24,39];
+  const BL=[235,242,251],BLB=[147,197,253];
+
+  function cy(h){if(y+h>H-16){doc.addPage();y=16;mh();}}
+  function mh(){doc.setFillColor(...NY);doc.rect(0,0,W,8,'F');doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...GY);doc.text('scalinity.com — Formulaire du Lead',PL,5.5);doc.text(r.date,W-14,5.5,{align:'right'});}
+
+  function sBar(title){cy(12);doc.setFillColor(...NY);doc.rect(PL,y,CW,9,'F');doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...WH);doc.text(title,W/2,y+6.3,{align:'center'});y+=12;}
+
+  function row1(label,val){
+    cy(11);
+    doc.setDrawColor(...LN);doc.setLineWidth(0.3);doc.rect(PL,y,CW,11);
+    doc.setFillColor(...GYL);doc.rect(PL,y,38,11,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(label+' :',PL+2,y+7.5);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
+    const lines=doc.splitTextToSize(v(val),CW-42);doc.text(lines[0]||'',PL+40,y+7.5);
+    y+=11;
+  }
+
+  function row2(l1,v1,l2,v2){
+    cy(11);
+    const hw=CW/2;
+    doc.setDrawColor(...LN);doc.setLineWidth(0.3);doc.rect(PL,y,hw,11);doc.rect(PL+hw,y,hw,11);
+    doc.setFillColor(...GYL);doc.rect(PL,y,28,11,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(l1+' :',PL+2,y+7.5);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v1).substring(0,22),PL+30,y+7.5);
+    doc.setFillColor(...GYL);doc.rect(PL+hw,y,28,11,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(l2+' :',PL+hw+2,y+7.5);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(v2).substring(0,22),PL+hw+30,y+7.5);
+    y+=11;
+  }
+
+  function dashedBox(text){
+    const lines=doc.splitTextToSize(text,CW-8);
+    const bh=lines.length*5.5+10;
+    cy(bh+4);
+    doc.setDrawColor(...GR);doc.setLineWidth(0.5);doc.setLineDashPattern([2,2],0);
+    doc.rect(PL,y,CW,bh);doc.setLineDashPattern([],0);
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...DK);
+    doc.text(lines,PL+4,y+8);y+=bh+6;
+  }
+
+  // PAGE 1
+  doc.setFontSize(20);doc.setFont('helvetica','bold');doc.setTextColor(...GR);doc.text('scalinity',PL,16);
+  doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...GY);doc.text('www.scalinity.com',PL,21);
+  doc.setFontSize(20);doc.setFont('helvetica','bold');doc.setTextColor(...GR);doc.text('Formulaire du Lead',W-14,14,{align:'right'});
+  doc.setDrawColor(...LN);doc.setLineWidth(0.4);doc.line(PL,25,W-14,25);
+  y=30;
+
+  sBar('ENTREPRISE');
+  row1('Nom',r.companyName);
+  row1("Secteur d'activite",r.sector);
+  row2("Chiffre d'affaire",r.revenue,'Nombre d\'employes',r.employees);
+  row2('SIRET',r.siret,'Numero de Telephone',r.phone);
+  row1('Adresse',r.address);
+  y+=4;
+
+  sBar('PROSPECT');
+  row2('Prenom',r.firstName,'Nom',r.lastName);
+  row1('Poste',r.jobTitle);
+  row1('Adresse Mail',r.email);
+  row2('Ligne Directe',r.directLine,'Numero de Portable',r.mobile);
+  y+=4;
+
+  sBar('INFRASTRUCTURE ACTUELLE');
+  dashedBox(r.resume||'Informations non disponibles.');
+
+  // PAGE 2 — NOTES
+  doc.addPage();y=16;mh();
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('NOTES',PL,y+6);y+=14;
+
+  if(r.clientName){
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
+    doc.text(`Le prospect a ete contacte de la part de ${r.clientName} :`,PL,y);y+=8;
+  }
+
+  const resumeLines=doc.splitTextToSize(r.resume||'',CW);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);
+  doc.text(resumeLines,PL,y);y+=resumeLines.length*5+8;
+
+  if((r.points_positifs||[]).length){
+    cy(14);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('Situation actuelle',PL,y);y+=6;
+    (r.points_positifs||[]).forEach(pt=>{const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;});
+    y+=4;
+  }
+
+  if((r.points_amelioration||[]).length){
+    cy(14);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('Prochaines etapes',PL,y);y+=6;
+    (r.points_amelioration||[]).forEach(pt=>{const lines=doc.splitTextToSize(pt,CW-7);cy(lines.length*5+5);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text('●',PL+1,y+4);doc.text(lines,PL+6,y+4);y+=lines.length*5+3;});
+    y+=4;
+  }
+
+  if(r.recommandation){
+    cy(14);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text("Interet du prospect",PL,y);y+=6;
+    const recL=doc.splitTextToSize(r.recommandation,CW-4);const recH=recL.length*5+8;cy(recH);
+    doc.setFillColor(...BL);doc.setDrawColor(...BLB);doc.setLineWidth(0.3);doc.roundedRect(PL,y,CW,recH,2,2,'FD');
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(recL,PL+4,y+6);y+=recH+6;
+  }
+
+  cy(40);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text('Coordonnees du contact',PL,y);y+=7;
+  [['Nom',`${r.firstName||''} ${r.lastName||''}`.trim()],['Fonction',r.jobTitle],['Organisation',r.companyName],['Telephone',r.mobile||r.phone],['Email',r.email]].forEach(([k,val])=>{
+    cy(7);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...GY);doc.text(k+' :',PL,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(...DK);doc.text(v(val),PL+30,y);y+=6;
+  });
+
+  // PAGE 3 — TRANSCRIPTION
+  doc.addPage();y=16;mh();
+  doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(...DK);doc.text("Transcription complete de l'appel",PL,y+5);y+=14;
+  const tlines=(r.transcript_formate||r.transcript||'Non disponible').split('\n').filter(l=>l.trim());
+  tlines.forEach(line=>{
+    const isAE=line.startsWith('AE:')||line.startsWith('Agent:');
+    const isP=line.startsWith('Prospect:')||line.startsWith('P:');
+    const wrapped=doc.splitTextToSize(line,CW-8);const bh=wrapped.length*5+7;cy(bh+3);
+    if(isAE){doc.setFillColor(...BL);doc.setDrawColor(...BLB);}
+    else if(isP){doc.setFillColor(...GYL);doc.setDrawColor(...LN);}
+    else{doc.setFillColor(252,252,252);doc.setDrawColor(...LN);}
+    doc.setLineWidth(0.3);doc.roundedRect(PL,y,CW,bh,2,2,'FD');
+    doc.setFontSize(8.5);doc.setFont('helvetica',isAE||isP?'bold':'normal');
+    doc.setTextColor(isAE?37:isP?60:100,isAE?99:60,isAE?235:60);
+    doc.text(wrapped,PL+4,y+5.5);y+=bh+3;
+  });
+  cy(10);y+=4;
+  doc.setFillColor(...GYL);doc.setDrawColor(...LN);doc.setLineWidth(0.3);doc.roundedRect(PL,y,CW,9,2,2,'FD');
+  doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...GY);
+  doc.text(`Scalinity Agent IA · ${r.date} · scalinity.com`,W/2,y+6,{align:'center'});
+
+  doc.save(`formulaire_lead_${(r.companyName||'prospect').replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+</script>
+</body>
+</html>
