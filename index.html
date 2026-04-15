@@ -459,17 +459,17 @@ function makePDF(){
     var bc=isOui?[110,231,183]:[254,202,202];
     var tc=isOui?[5,150,105]:[220,38,38];
     doc.setFillColor(bg[0],bg[1],bg[2]); doc.setDrawColor(bc[0],bc[1],bc[2]); doc.setLineWidth(0.3);
-    cy(32); doc.roundedRect(sx,y,bsw-2,30,3,3,'FD');
-    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(GY[0],GY[1],GY[2]);
+    cy(38); doc.roundedRect(sx,y,bsw-2,36,3,3,'FD');
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(GY[0],GY[1],GY[2]);
     doc.text(item.label,sx+(bsw-2)/2,y+6,{align:'center'});
-    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(tc[0],tc[1],tc[2]);
-    doc.text(item.k,sx+(bsw-2)/2,y+14,{align:'center'});
-    var clean=String(item.v).replace(/[^\x00-\x7F\xC0-\xFF]/g,'').substring(0,60);
-    var vlines=doc.splitTextToSize(clean,bsw-6);
-    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(DK[0],DK[1],DK[2]);
-    doc.text(vlines.slice(0,3),sx+3,y+19);
+    doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(tc[0],tc[1],tc[2]);
+    doc.text(item.k,sx+(bsw-2)/2,y+13,{align:'center'});
+    var clean=String(item.v).replace(/[^\x00-\x7F\xC0-\xFF]/g,'');
+    var vlines=doc.splitTextToSize(clean,bsw-5);
+    doc.setFontSize(5.5); doc.setFont('helvetica','normal'); doc.setTextColor(DK[0],DK[1],DK[2]);
+    doc.text(vlines.slice(0,5),sx+2,y+18);
   });
-  y+=34;
+  y+=38;
 
   sb('POINTS FORTS', [5,100,60]);
   (r.points_forts||[]).forEach(function(p){bulletItem(p, GR);});
