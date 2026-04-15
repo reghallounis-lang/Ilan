@@ -17,7 +17,7 @@ function extractBoundary(contentType) {
 
 function parseMultipartBody(body, boundary) {
   const parts = {};
-  const sep = Buffer.from(`--${boundary}`);
+  const sep = Buffer.from("--" + boundary);
   let start = 0;
   const segments = [];
   for (let i = 0; i <= body.length - sep.length; i++) {
@@ -78,16 +78,16 @@ module.exports = async function handler(req, res) {
     const b2 = "----FormBoundary" + crypto.randomBytes(8).toString("hex");
     const CRLF = "\r\n";
     const groqBody = Buffer.concat([
-      Buffer.from(`--${b2}${CRLF}Content-Disposition: form-data; name="file"; filename="${fileName}"${CRLF}Content-Type: audio/mpeg${CRLF}${CRLF}`),
+      Buffer.from("--" + b2 + CRLF + "Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"" + CRLF + "Content-Type: audio/mpeg" + CRLF + CRLF),
       fileBuffer,
-      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-large-v3-turbo`),
-      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="language"${CRLF}${CRLF}fr`),
-      Buffer.from(`${CRLF}--${b2}${CRLF}Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}text`),
-      Buffer.from(`${CRLF}--${b2}--${CRLF}`),
+      Buffer.from(CRLF + "--" + b2 + CRLF + "Content-Disposition: form-data; name=\"model\"" + CRLF + CRLF + "whisper-large-v3-turbo"),
+      Buffer.from(CRLF + "--" + b2 + CRLF + "Content-Disposition: form-data; name=\"language\"" + CRLF + CRLF + "fr"),
+      Buffer.from(CRLF + "--" + b2 + CRLF + "Content-Disposition: form-data; name=\"response_format\"" + CRLF + CRLF + "text"),
+      Buffer.from(CRLF + "--" + b2 + "--" + CRLF),
     ]);
     const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": `multipart/form-data; boundary=${b2}` },
+      headers: { "Authorization": "Bearer " + groqKey, "Content-Type": "multipart/form-data; boundary=" + b2 },
       body: groqBody,
     });
     const groqText = await groqRes.text();
@@ -101,27 +101,7 @@ module.exports = async function handler(req, res) {
 
   // 2. Claude
   try {
-    const prompt = `Tu es un coach expert en cold call B2B, exigeant et direct. Tu ne complimentes pas pour rien. Si l'appel est moyen, tu le dis. Si l'agent a rate des choses importantes, tu le signales clairement sans menagement.
-
-Analyse cet appel passe par ${agentName} aupres de ${companyName}.
-
-Transcription:
----
-${transcript}
----
-
-Points d'analyse obligatoires :
-1. La methode BANTP a-t-elle ete appliquee ? Evalue chaque lettre :
-   - B (Budget) : a-t-on aborde le budget ? OUI/NON + commentaire
-   - A (Authority) : parle-t-on au bon decideur ? OUI/NON + commentaire
-   - N (Need) : le besoin a-t-il ete identifie ? OUI/NON + commentaire
-   - T (Timeline) : le timing du projet a-t-il ete qualifie ? OUI/NON + commentaire
-   - P (Problematique) : la douleur concrete du prospect a-t-elle ete creusee ? OUI/NON + commentaire
-
-2. Sois honnete sur la qualite globale - ne sois pas gentil si ce n'est pas merite.
-
-Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks:
-{"resume":"resume detaille de l appel en 10 phrases minimum : qui a appele qui et dans quel contexte, comment s est deroule l echange, quelles questions ont ete posees, quelles informations ont ete collectees, comment le prospect a reagi, quels sujets ont ete abordes, comment s est conclue la conversation, quel est le niveau d interet du prospect","bantp":{"budget":"OUI ou NON - explication","authority":"OUI ou NON - explication","need":"OUI ou NON - explication","timeline":"OUI ou NON - explication","problematique":"OUI ou NON - explication"},"score_global":72,"score_accroche":65,"score_qualification":80,"score_ecoute":70,"score_closing":55,"points_forts":["uniquement ce qui etait vraiment bien fait"],"axes_amelioration":["ce qui etait clairement rate"],"tips":["conseil actionnable 1","conseil actionnable 2","conseil actionnable 3"],"moment_cle":"moment decisif et pourquoi","resultat":"visio bookee ou rappel a planifier ou pas interesse ou message vocal","note_coach":"feedback direct et honnete sans complaisance en 2-3 phrases","duree":"duree estimee"}`;
+    const prompt = "Tu es un coach expert en cold call B2B, exigeant et direct. Tu ne complimentes pas pour rien. Si l'appel est moyen, tu le dis clairement.\n\nAnalyse cet appel passe par " + agentName + " aupres de " + companyName + ".\n\nTranscription:\n---\n" + transcript + "\n---\n\nRetourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks:\n{\"resume\":\"resume detaille en 10 phrases minimum : qui a appele qui et dans quel contexte, comment s est deroule l echange, quelles questions ont ete posees, quelles informations ont ete collectees, comment le prospect a reagi, quels sujets ont ete abordes, comment s est conclue la conversation, quel est le niveau d interet du prospect\",\"bantp\":{\"budget\":\"OUI ou NON - explication\",\"authority\":\"OUI ou NON - explication\",\"need\":\"OUI ou NON - explication\",\"timeline\":\"OUI ou NON - explication\",\"problematique\":\"OUI ou NON - explication\"},\"ratio_parole\":{\"agent\":40,\"prospect\":60,\"analyse\":\"commentaire direct sur ce ratio\"},\"mots_parasites\":{\"liste\":[\"euh\",\"voila\",\"du coup\"],\"compte\":{\"euh\":3,\"voila\":5},\"analyse\":\"commentaire direct sur les mots parasites\"},\"score_global\":72,\"score_accroche\":65,\"score_qualification\":80,\"score_ecoute\":70,\"score_closing\":55,\"points_forts\":[\"uniquement ce qui etait vraiment bien fait\"],\"axes_amelioration\":[\"ce qui etait clairement rate\"],\"tips\":[\"conseil actionnable 1\",\"conseil actionnable 2\",\"conseil actionnable 3\"],\"moment_cle\":\"moment decisif et pourquoi\",\"objectif_prioritaire\":\"UNE SEULE chose precise que l agent doit travailler en priorite pour son prochain appel\",\"resultat\":\"visio bookee ou rappel a planifier ou pas interesse ou message vocal\",\"note_coach\":\"feedback direct et honnete sans complaisance en 2-3 phrases\",\"duree\":\"duree estimee\"}";
 
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -132,7 +112,7 @@ Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
+        max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       }),
     });
