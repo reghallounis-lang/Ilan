@@ -53,8 +53,8 @@ module.exports = async function handler(req, res) {
 
   const anthropicKey = req.headers["x-anthropic-key"] || "";
   const groqKey = req.headers["x-groq-key"] || "";
-  if (!anthropicKey.startsWith("sk-ant")) return res.status(400).json({ error: "Clé Anthropic invalide" });
-  if (!groqKey.startsWith("gsk_")) return res.status(400).json({ error: "Clé Groq invalide" });
+  if (!anthropicKey.startsWith("sk-ant")) return res.status(400).json({ error: "Cle Anthropic invalide" });
+  if (!groqKey.startsWith("gsk_")) return res.status(400).json({ error: "Cle Groq invalide" });
 
   const contentType = req.headers["content-type"] || "";
   const boundary = extractBoundary(contentType);
@@ -99,35 +99,37 @@ module.exports = async function handler(req, res) {
 
   if (!transcript.trim()) return res.status(500).json({ error: "Transcription vide." });
 
-  // 2. Analyse coach Claude
+  // 2. Claude
   try {
-    const prompt = `Tu es un coach expert en cold call B2B. Analyse cet appel passé par ${agentName} auprès de ${companyName} et donne un retour détaillé pour aider l'agent à progresser.
+    const prompt = `Tu es un coach expert en cold call B2B, exigeant et direct. Tu ne complimentes pas pour rien. Si l'appel est moyen, tu le dis. Si l'agent a rate des choses importantes, tu le signales clairement sans menagement.
+
+Analyse cet appel passe par ${agentName} aupres de ${companyName}.
 
 Transcription:
 ---
 ${transcript}
 ---
 
+Points d'analyse obligatoires :
+1. La methode BANTP a-t-elle ete appliquee ? Evalue chaque lettre :
+   - B (Budget) : a-t-on aborde le budget ? OUI/NON + commentaire
+   - A (Authority) : parle-t-on au bon decideur ? OUI/NON + commentaire
+   - N (Need) : le besoin a-t-il ete identifie ? OUI/NON + commentaire
+   - T (Timeline) : le timing du projet a-t-il ete qualifie ? OUI/NON + commentaire
+   - P (Problematique) : la douleur concrete du prospect a-t-elle ete creusee ? OUI/NON + commentaire
+
+2. Sois honnete sur la qualite globale - ne sois pas gentil si ce n'est pas merite.
+
 Retourne UNIQUEMENT ce JSON valide sans texte autour, sans backticks:
-{
-  "resume": "résumé factuel de l'appel en 2-3 phrases: qui a appelé qui, quel était l'objet, quel a été le résultat",
-  "score_global": 72,
-  "score_accroche": 65,
-  "score_qualification": 80,
-  "score_ecoute": 70,
-  "score_closing": 55,
-  "points_forts": ["ce que l agent a bien fait 1", "point fort 2", "point fort 3"],
-  "axes_amelioration": ["axe concret 1", "axe concret 2", "axe concret 3"],
-  "tips": ["conseil actionnable specifique 1", "conseil actionnable 2", "conseil actionnable 3"],
-  "moment_cle": "le moment le plus important ou decisif de l appel et pourquoi",
-  "resultat": "visio bookee | rappel a planifier | pas interesse | message vocal",
-  "note_coach": "feedback global du coach a l agent en 2-3 phrases, bienveillant et motivant",
-  "duree": "duree estimee de l appel"
-}`;
+{"resume":"resume factuel 2-3 phrases","bantp":{"budget":"OUI ou NON - explication","authority":"OUI ou NON - explication","need":"OUI ou NON - explication","timeline":"OUI ou NON - explication","problematique":"OUI ou NON - explication"},"score_global":72,"score_accroche":65,"score_qualification":80,"score_ecoute":70,"score_closing":55,"points_forts":["uniquement ce qui etait vraiment bien fait"],"axes_amelioration":["ce qui etait clairement rate"],"tips":["conseil actionnable 1","conseil actionnable 2","conseil actionnable 3"],"moment_cle":"moment decisif et pourquoi","resultat":"visio bookee ou rappel a planifier ou pas interesse ou message vocal","note_coach":"feedback direct et honnete sans complaisance en 2-3 phrases","duree":"duree estimee"}`;
 
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
