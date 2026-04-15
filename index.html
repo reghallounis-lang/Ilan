@@ -94,6 +94,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .moment-box{background:var(--amber-l);border:1px solid #FDE68A;border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.6;color:var(--dark);}
 .coach-box{background:var(--green-l);border:1px solid var(--green);border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.7;color:var(--dark);}
 .coach-label{font-size:10px;font-weight:700;color:var(--green-d);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.bantp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px;}
+.bantp-card{border-radius:8px;padding:10px 8px;text-align:center;border:1px solid var(--line);}
+.bantp-card.oui{background:#ECFDF5;border-color:#6EE7B7;}
+.bantp-card.non{background:var(--red-l);border-color:#FECACA;}
+.bantp-letter{font-size:18px;font-weight:700;margin-bottom:4px;}
+.bantp-letter.oui{color:#059669;}.bantp-letter.non{color:var(--red);}
+.bantp-label{font-size:8px;font-weight:700;color:var(--gray);text-transform:uppercase;margin-bottom:6px;}
+.bantp-text{font-size:10px;color:var(--dark);line-height:1.4;text-align:left;}
 .act{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;}
 .btn-pdf{padding:11px 22px;border-radius:8px;background:var(--green);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
 .btn-pdf:hover{opacity:.9;}
@@ -181,6 +189,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="scores-grid" id="scoresGrid"></div>
     <div class="sec">Resume de l'appel</div>
     <div class="resume-box" id="resumeBox"></div>
+    <div class="sec">BANTP - Qualification</div>
+    <div id="bantpGrid"></div>
     <div class="sec">Points forts</div>
     <div class="items-list" id="pointsForts"></div>
     <div class="sec">Axes d'amelioration</div>
@@ -282,6 +292,19 @@ function render(r){
   var scores=[['GLOBAL',r.score_global||0],['ACCROCHE',r.score_accroche||0],['QUALIFICATION',r.score_qualification||0],['ECOUTE',r.score_ecoute||0],['CLOSING',r.score_closing||0]];
   document.getElementById('scoresGrid').innerHTML=scores.map(function(s){var l=s[0],v=s[1];return '<div class="sc"><div class="sc-lbl">'+l+'</div><div class="sc-val '+sc(v)+'">'+v+'<span style="font-size:11px;font-weight:400;color:var(--gray)">/100</span></div><div class="sc-bar"><div class="sc-fill '+sc(v)+'" style="width:'+v+'%"></div></div></div>';}).join('');
   document.getElementById('resumeBox').textContent=r.resume||'';
+  var bantp = r.bantp || {};
+  var bantpItems = [
+    {k:'B', label:'Budget', v:bantp.budget||'Non evalue'},
+    {k:'A', label:'Authority', v:bantp.authority||'Non evalue'},
+    {k:'N', label:'Need', v:bantp.need||'Non evalue'},
+    {k:'T', label:'Timeline', v:bantp.timeline||'Non evalue'},
+    {k:'P', label:'Problematique', v:bantp.problematique||'Non evalue'}
+  ];
+  document.getElementById('bantpGrid').innerHTML='<div class="bantp-grid">'+bantpItems.map(function(item){
+    var isOui=item.v.toLowerCase().indexOf('oui')===0;
+    var cls=isOui?'oui':'non';
+    return '<div class="bantp-card '+cls+'"><div class="bantp-label">'+item.label+'</div><div class="bantp-letter '+cls+'">'+item.k+'</div><div class="bantp-text">'+item.v+'</div></div>';
+  }).join('')+'</div>';
   document.getElementById('pointsForts').innerHTML=(r.points_forts||[]).map(function(p){return '<div class="item"><div class="item-dot dot-g"></div><span>'+p+'</span></div>';}).join('');
   document.getElementById('axesAmel').innerHTML=(r.axes_amelioration||[]).map(function(p){return '<div class="item"><div class="item-dot dot-a"></div><span>'+p+'</span></div>';}).join('');
   document.getElementById('tipsList').innerHTML=(r.tips||[]).map(function(t,i){return '<div class="tip-item"><div class="tip-num">'+(i+1)+'</div><span>'+t+'</span></div>';}).join('');
@@ -418,6 +441,36 @@ function makePDF(){
   sb('RESUME DE L\'APPEL');
   textBox(r.resume, BL, DK, BLB);
   y+=2;
+  // BANTP
+  sb('QUALIFICATION BANTP', [79,70,229]);
+  var bantp=r.bantp||{};
+  var bantpItems=[
+    {k:'B',label:'Budget',v:bantp.budget||'Non evalue'},
+    {k:'A',label:'Authority',v:bantp.authority||'Non evalue'},
+    {k:'N',label:'Need',v:bantp.need||'Non evalue'},
+    {k:'T',label:'Timeline',v:bantp.timeline||'Non evalue'},
+    {k:'P',label:'Problematique',v:bantp.problematique||'Non evalue'}
+  ];
+  var bsw=CW/5;
+  bantpItems.forEach(function(item,i){
+    var sx=PL+i*bsw;
+    var isOui=String(item.v).toLowerCase().indexOf('oui')===0;
+    var bg=isOui?[236,253,245]:[254,242,242];
+    var bc=isOui?[110,231,183]:[254,202,202];
+    var tc=isOui?[5,150,105]:[220,38,38];
+    doc.setFillColor(bg[0],bg[1],bg[2]); doc.setDrawColor(bc[0],bc[1],bc[2]); doc.setLineWidth(0.3);
+    cy(32); doc.roundedRect(sx,y,bsw-2,30,3,3,'FD');
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(GY[0],GY[1],GY[2]);
+    doc.text(item.label,sx+(bsw-2)/2,y+6,{align:'center'});
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(tc[0],tc[1],tc[2]);
+    doc.text(item.k,sx+(bsw-2)/2,y+14,{align:'center'});
+    var clean=String(item.v).replace(/[^\x00-\x7F\xC0-\xFF]/g,'').substring(0,60);
+    var vlines=doc.splitTextToSize(clean,bsw-6);
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(DK[0],DK[1],DK[2]);
+    doc.text(vlines.slice(0,3),sx+3,y+19);
+  });
+  y+=34;
+
   sb('POINTS FORTS', [5,100,60]);
   (r.points_forts||[]).forEach(function(p){bulletItem(p, GR);});
   y+=4;
